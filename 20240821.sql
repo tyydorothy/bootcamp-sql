@@ -179,5 +179,167 @@ select o.customer_id, avg(o.total_amount) as avg_amount
 -- with datetime, integer, numeric, varchar 
 -- where, group by, having, order by
 
+select * from customers where name = 'JOHN LAU'; -- case insensitive (mySQL)
+select * from customers where UPPER(name) = 'JOHN LAU'; -- if case sensitive
 
- 
+select * from customers where name like '%HN%';
+select * from customers where name like 'JO%LAU'; -- % can place in the middle
+
+select * from customers where name like '_HN LAU'; -- _ refer to one character only
+select * from customers where name like '_OHN LAU';
+
+select ROUND(o.total_amount, -1), o.* from orders o;
+select ROUND(o.total_amount, 1), o.* from orders o;
+select CEIL(ROUND(o.total_amount, 0)), o.* from orders o;
+select FLOOR(ROUND(o.total_amount, 0)), o.* from orders o;
+
+
+select 1, ABS(-5) from dual; -- dual: blank/no table
+
+select '2024-08-01' from dual; -- not a date
+
+-- DATE formatting
+select DATE_FORMAT('2023-08-31','%y-%m-%d') from dual;
+select DATE_FORMAT('2023-08-31','%y-%m-%d') + INTERVAL 1 DAY from dual; -- mySQL
+select STR_TO_DATE('2023-12-31','%y-%m-%d') + INTERVAL 1 DAY from dual; -- ???
+
+select STR_TO_DATE('2023 December 31','%Y %M %d') + INTERVAL 1 DAY from dual; -- %Y -- 4 digit // %y -- 2 digit
+
+select DATE_FORMAT('2023-12-31','%y-%m-%d') + INTERVAL 1 DAY from dual; -- work
+
+select DATE_FORMAT('2023-08-31','%y-%m-%d') +1  from dual; -- Orcale ok! mySQL cannot run
+
+-- Extract
+select EXTRACT(YEAR FROM DATE_FORMAT('2023-08-15','%y-%m-%d')) from dual;
+select EXTRACT(MONTH FROM DATE_FORMAT('2023-08-15','%y-%m-%d')) from dual;
+select EXTRACT(DAY FROM DATE_FORMAT('2023-08-15','%y-%m-%d')) from dual;
+
+-- alter table
+select * from orders;
+alter table orders add column tran_date date; -- DDL
+
+update orders 
+set tran_date = DATE_FORMAT('2023-08-31','%y-%m-%d')
+where id = 1;
+
+update orders 
+set tran_date = DATE_FORMAT('2023-08-03','%y-%m-%d')
+where id = 2;
+
+update orders
+set tran_date = DATE_FORMAT('2022-08-22','%y-%m-%d')
+where id = 3;
+
+update orders
+set tran_date = DATE_FORMAT('2021-09-30','%y-%m-%d')
+where id = 4;
+
+update orders
+set tran_date = DATE_FORMAT('2024-08-09','%y-%m-%d')
+where id = 5;
+
+update orders
+set tran_date = DATE_FORMAT('2021-04-14','%y-%m-%d')
+where id = 6;
+
+update orders
+set tran_date = DATE_FORMAT('2021-02-02','%y-%m-%d')
+where id = 7;
+
+
+
+SELECT EXTRACT(YEAR FROM DATE_FORMAT(o.tran_date,'%y,%m,%d')),COUNT(1) as NUMBER_OF_ORDERS 
+	from orders o
+    group by EXTRACT(YEAR FROM DATE_FORMAT(o.tran_date,'%y,%m,%d'))
+    having COUNT(1) < 2;
+
+
+select IFNULL(s.weight,'N/A'),IFNULL(s.height,'N/A'), s.* from students s;
+select COALESCE(s.weight,'N/A'),COALESCE(s.height,'N/A'), s.* from students s;
+
+-- < 2000 'S'
+-- >= 2000 and < 1000 -> 'M'
+-- >=10000 -> 'L'
+
+
+select CASE
+		WHEN total_amount < 2000 THEN 'S'
+		WHEN total_amount >= 2000 AND o.total_amount < 10000 THEN 'M'
+        -- WHEN total_amount between 2000 and 10000 THEN 'M'
+		ELSE 'L'
+    END AS category
+    ,o.*
+from orders o;
+
+-- between (inclusive)
+select * from orders 
+	where tran_date between DATE_FORMAT('2022-08-31','%y-%m-%d')
+    and DATE_FORMAT('2023-12-31','%y-%m-%d');
+    
+-- EXISTS (customers, orders)
+-- Find the customer(s) who has orders
+
+insert into customers values(3, 'Jenny Yu','jennyyu@gmail.com');
+insert into customers values(4, 'Benny Kwok','bennykwok@gmail.com');
+
+
+
+-- return all in customer without filter
+select * from customers c
+where exists(select 1 from orders);
+
+-- return customer who have orders
+select * from customers c
+where exists(select 1 from orders o where o.customer_id = c.id);
+
+-- return customer who do not have orders -- adding 'NOT'
+select * from customers c
+where not exists(select 1 from orders o where o.customer_id = c.id);
+
+
+
+insert into orders value (8, 9999, 3,DATE_FORMAT('2024-08-24','%Y-%m-%d'));
+
+-- extract 2024 august 
+select CONCAT(extract(YEAR from tran_date),'-',extract(MONTH from tran_date)) from orders;
+
+-- distinct 1 column -- ~UNIQUE() in excel
+select distinct CONCAT(extract(YEAR from tran_date),'-',extract(MONTH from tran_date)) from orders;
+-- distinct 2 column
+select distinct CONCAT(extract(YEAR from tran_date),'-',extract(MONTH from tran_date)), total_amount from orders;
+
+
+
+-- subquery: not a good practice
+-- first SQL to execute is query in ()
+-- then outside
+-- slow performance: run two times
+-- usually can be replaced by other methods 
+
+select o.*, (select max(total_amount) from orders),1
+from orders o;
+
+select * from orders
+where customer_id = (select id from customers where name like '%LAU');
+
+
+
+-- ------------------------------- JOIN -----------------------------------
+
+select * from customers c; -- 4 rows
+select * from orders o; -- 8 rows
+
+-- INNER JOIN --
+select * from customers c inner join orders o; -- return 4 * 8 rows (all possible combinations of customers and orders)
+select * from customers c inner join orders o on o.customer_id = c.id; -- return 8 rows
+
+
+select * from customers c  join orders o on o.customer_id = c.id; -- return 8 rows
+
+-- select all customer columns from c 
+-- Approach 1
+select c.* from customers c
+where exists(select 1 from orders o where o.customer_id = c.id) order by c.id;
+
+-- Approach 2
+select distinct c.* from customers c inner join orders o on o.customer_id = c.id order by c.id; 
