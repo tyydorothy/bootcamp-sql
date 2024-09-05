@@ -205,14 +205,14 @@ FROM dpt_loc dl LEFT JOIN employees e on dl.manager_id = e.employee_id;
 
 
 
--- ===================================== 10 ==================================================
+-- ===================================== 11 ==================================================
 SELECT d.department_id, d.department_name, ROUND(avg(e.salary),2) as avg_salary
 FROM departments d INNER JOIN employees e on d.department_id = e.department_id
 GROUP BY d.department_id;
 
 
 
--- ===================================== 11 ==================================================
+-- ===================================== 12 ==================================================
 CREATE TABLE job_grades(
 	grade_level varchar(2) PRIMARY KEY,
     lowest_sal decimal(13,2),
