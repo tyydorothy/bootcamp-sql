@@ -294,7 +294,7 @@ where exists(select 1 from orders o where o.customer_id = c.id);
 
 -- return customer who do not have orders -- adding 'NOT'
 select * from customers c
-where not exists(select 1 from orders o where o.customer_id = c.id);
+where not exists(select * from orders o where o.customer_id = c.id);
 
 
 
@@ -324,12 +324,16 @@ where customer_id = (select id from customers where name like '%LAU');
 
 
 
--- ------------------------------- JOIN -----------------------------------
+
+
+-- ----------------------------------------------- JOIN -----------------------------------------------------
 
 select * from customers c; -- 4 rows
 select * from orders o; -- 8 rows
 
 -- INNER JOIN --
+-- contain all required records
+
 select * from customers c inner join orders o; -- return 4 * 8 rows (all possible combinations of customers and orders)
 select * from customers c inner join orders o on o.customer_id = c.id; -- return 8 rows
 
@@ -343,3 +347,206 @@ where exists(select 1 from orders o where o.customer_id = c.id) order by c.id;
 
 -- Approach 2
 select distinct c.* from customers c inner join orders o on o.customer_id = c.id order by c.id; 
+
+
+
+insert into orders values(9, 400.00, null, DATE_FORMAT('2023-03-23','%Y-%m-%d'));
+
+-- LEFT JOIN --
+-- for reporting
+select o.*, c.* from customers c left join orders o on o.customer_id = c.id order by c.id;
+
+-- RIGHT JOIN -- (same as left join, usually people use left join)
+select o.*, c.* from customers c right join orders o on o.customer_id = c.id order by o.id;
+select o.*, c.* from orders o right join customers c on o.customer_id = c.id order by c.id;
+
+-- JOIN & GROUP BY
+-- count which column **
+-- count(1) --> count the row each c.id having --> benny have one null order row --> benny have 1 order
+SELECT c.id ,c.name, count(o.id) number_of_orders, ifnull(max(total_amount),0) as max_amount_of_orders
+FROM customers c LEFT JOIN orders o on c.id = o.customer_id and o.total_amount > 1000
+WHERE total_amount > 1000 or o.total_amount is null
+GROUP BY c.id, c.name
+ORDER BY c.name asc;
+
+-- STEP: join > where > group by > order by > select (which data to present)
+
+-- FULL OUTER JOIN -- (seldom use)
+
+
+-- ---------------------------------------------- PRIMARY KEY -------------------------------------------------
+-- UNIQUE
+-- INDEXING
+-- NOT NULL
+-- Searching: must return only one result or null
+
+
+
+insert into customers values (4, "Mary Chan", "marychan@gmail.com"); -- allow duplicated id without setting id as primary key
+DELETE FROM customers WHERE name = "Mary Chan";
+
+ALTER TABLE customers ADD CONSTRAINT pk_customer_id PRIMARY KEY (id);
+
+INSERT INTO customers values(4, "Mary Chan", "marychan@gmail.com"); -- error
+INSERT INTO customers values (5, "Mary Chan", "marychan@gmail.com"); -- OK!
+
+-- ---------------------------------------------- FOREIGN KEY -------------------------------------------------
+-- ensure integrity
+-- the foreign key of one tables exists in another table as primary key
+-- safeguard the relationship/ record exists in another table
+-- a way to link table together
+-- the two key should be equivalent
+
+ALTER TABLE orders ADD CONSTRAINT fk_customer_id FOREIGN KEY (customer_id) REFERENCES customers(id); 
+
+-- should not allow NULL key or key does not exist in the original table (customer_id)
+insert into orders values(10, 400.00, 10, DATE_FORMAT('2023-03-23','%Y-%m-%d')); -- error
+insert into orders values(10, 400.00, NULL, DATE_FORMAT('2023-03-23','%Y-%m-%d')); -- should be error in oracle but allowed in mySQL
+insert into orders values(10, 400.00, 5, DATE_FORMAT('2023-03-23','%Y-%m-%d')); -- OK!
+
+delete from orders where total_amount = 400.00;
+
+select * from customers;
+select * from orders;
+
+
+
+-- TABLE DESIGN: PK AND FK ensure data integrity during insert/update
+-- Primary Key and Foreign key are also a type of constraints
+-- Every table has one pk only
+
+
+
+-- ---------------------------------------------- UNIQUE -------------------------------------------------
+-- Other constraints: Unique constraints
+-- should not use HKID as primary key 
+-- no guarantee HKID is unique all the time
+-- set id as primary key
+
+select * from customers;
+alter table customers add constraint unique_email unique (email);
+insert into customers values (6, "John Chan", "johnchan@gmail.com"); -- error
+
+
+
+-- ---------------------------------------------- NOT NULL -------------------------------------------------
+ALTER TABLE customers MODIFY name varchar(50) not null;
+
+
+
+
+
+-- ---------------------------------------------- DATABASE DESIGN -------------------------------------------------
+-- ONE-to-ONE table
+-- one table contains information that frequently used but another conatiains info that seldom used
+
+-- MANY-to-MANY table
+-- to store the relationship of two tables
+-- create one new table: PK = table1_PK + table2_PK, FK1 = table1_PK, FK2 = table2_PK
+
+-- Primary Key
+-- Foreign Key
+
+-- INNER JOIN
+-- frequently use
+-- return all relatable data (data with relationship with another table)
+-- 
+
+-- LEFT/RIGHT JOIN
+-- return 
+-- can be replaced by NOT EXISTS (most likely, better performance)
+
+-- java will not ensure data integrity
+-- database is where to ensure data integrity
+
+-- Database Normalisation
+-- notes Week 20-21
+-- 1NF: atomic values (data in a cell is indivisible, not using separator (, ; tab) to separate
+-- 2NF: divide database into different tables
+-- 3NF: Key table is important (key can be easily updated, can easily add key, or change the key to another form [there are different abbr for one thing])
+
+-- should always be fully normalised
+-- not fully normalised always have its cost
+-- more joins --> slower (only if the db is not well-designed, shd not be a big concern coz hardware is more advanced now)
+-- if well normalised --> no redunduncy --> less storage
+
+-- --------------------------------------------- UNION --------------------------------------------- 
+select name, email 
+from customers
+union all
+select id, total_amount -- must select same no. of column
+from orders;
+
+select 1 
+from customers 
+union all
+select 1 
+from orders; -- return (no. of rows in customer + no. of rows in orders) rows 
+
+select 1 
+from customers 
+union 
+select 1 
+from orders; -- return 1 without duplicate value/ distinct value only
+
+-- DO NOT drop column 
+
+
+-- =========================================== VIEW =============================================
+-- select real time data (not the moment when the view is created)
+-- select * will slow down performance
+
+create view orders_202408
+as
+select * from orders -- SELECT * 
+where tran_date between DATE_FORMAT('2024-07-31','%Y-%m-%d') and DATE_FORMAT('2024-09-01','%Y-%m-%d');
+
+select * from orders_202408; -- 
+
+drop view orders_202408;
+
+
+-- sample procedure -- pseudo code -- copy from git
+P_ID INT;
+P_TOTAL_AMOUNT NUMERIC (13,2);
+P_CUSTOMER INT;
+P_TRAN_DATE DATE;
+
+CURSOR C_ORDERS
+IS
+SELECT ID, TOTAL_AMOUNT, CUSTOMER_ID, TRAN_DATE
+FROM orders_202408;
+
+FOR rec 
+
+-- 
+
+select *
+INTO P_ID, P_TOTAL_AMOUNT,P_CUSTOMER_ID,P_TRAN_DATE
+FROM orders_202408
+
+select * from customers; -- SELECT * --> slow performance
+select * from orders;
+
+
+
+-- Materialized View
+-- not available in MySQL
+-- not real time
+-- capture of sales per month?
+-- data cannot be modified
+
+
+
+-- stored procedure
+-- monthly eStatement
+-- regular notice of fee/payment
+-- no need real-time interaction
+-- less overhead: if by java: java-> db -> java -> out
+
+-- table trigger
+-- certain act/event (e.g. insert/update/delete) trigger certain procedure
+-- not manually trigger
+-- JAVA (OOP) easier to follow and higher readability
+-- table trigger is a kind of functional programme (linkage between procedures not clear, hard to avoid crash)
+-- limited use only
